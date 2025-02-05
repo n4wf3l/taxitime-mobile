@@ -37,15 +37,7 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="RouteInput" // Lien vers RouteInput
-        options={{
-          title: "Route Input",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="map.fill" color={color} />
-          ),
-        }}
-      />
+      {/* Supprimé RouteInput car il sera automatiquement géré */}
     </Tabs>
   );
 }

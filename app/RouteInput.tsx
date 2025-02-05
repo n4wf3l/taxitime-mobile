@@ -8,8 +8,10 @@ import {
   Image,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import TesseractOcr from "react-native-tesseract-ocr";
 import CustomTabBar from "../components/CustomTabBar";
 
@@ -33,6 +35,13 @@ export default function RouteInput() {
   const [chutes, setChutes] = useState("");
   const [kmTotaux, setKmTotaux] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [shiftStarted, setShiftStarted] = useState(false);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // État pour gérer le chargement
+  const [elapsedTime, setElapsedTime] = useState(0); // État pour le temps écoulé
+  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
+    null
+  ); // État pour l'intervalle du timer
 
   useEffect(() => {
     const updateHour = () => {
@@ -46,6 +55,28 @@ export default function RouteInput() {
     const interval = setInterval(updateHour, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    // Démarrer le timer lorsque le shift commence
+    if (shiftStarted) {
+      setTimerInterval(
+        setInterval(() => {
+          setElapsedTime((prev) => prev + 1);
+        }, 1000)
+      );
+    } else {
+      // Arrêter le timer lorsque le shift se termine
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        setTimerInterval(null);
+      }
+    }
+    return () => {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+    };
+  }, [shiftStarted]);
 
   const handlePhotoUpload = async () => {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
@@ -67,7 +98,7 @@ export default function RouteInput() {
     ) {
       const imageUri = result.assets[0].uri;
       setTicketPhoto(imageUri);
-      await extractTextFromImage(imageUri); // Extraction directe après la photo
+      await extractTextFromImage(imageUri);
     }
   };
 
@@ -75,9 +106,8 @@ export default function RouteInput() {
     setIsProcessing(true);
     try {
       const text = await TesseractOcr.recognize(imageUri, "eng", tessOptions);
-      console.log("Texte extrait :", text); // Debugging
+      console.log("Texte extrait :", text);
 
-      // Regex pour extraire les données
       const prisesMatch = text.match(/Prises\s*[:\-]?\s*(\d+)/i);
       const kmEnChargeMatch = text.match(/KM\s*en\s*charge\s*[:\-]?\s*(\d+)/i);
       const chutesMatch = text.match(/Chutes\s*[:\-]?\s*(\d+)/i);
@@ -99,8 +129,71 @@ export default function RouteInput() {
     }
   };
 
-  const handleValidate = () => {
-    console.log("Validation effectuée");
+  const handleStartShift = async () => {
+    setIsLoading(true); // Démarrer le chargement
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      alert("Permission de localisation refusée !");
+      setIsLoading(false); // Arrêter le chargement
+      return;
+    }
+
+    try {
+      const location = await Location.getCurrentPositionAsync({});
+      console.log("Localisation de début :", location);
+
+      const { latitude, longitude } = location.coords;
+
+      // Obtenir l'adresse à partir des coordonnées
+      const address = await Location.reverseGeocodeAsync({
+        latitude,
+        longitude,
+      });
+      const street = address[0]?.street || "Adresse inconnue"; // Récupérer la rue
+      const city = address[0]?.city || "Ville inconnue"; // Récupérer la ville
+      const postalCode = address[0]?.postalCode || "Code postal inconnu"; // Récupérer le code postal
+      const houseNumber = address[0]?.name || "Numéro inconnu"; // Récupérer le numéro de maison
+
+      Alert.alert(
+        "Shift commencé",
+        `Votre shift a démarré avec succès à partir de ${houseNumber}, ${street}, ${city}, ${postalCode}`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setShiftStarted(true);
+              setStartTime(new Date());
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error(
+        "Erreur lors de la récupération de la localisation:",
+        error
+      );
+      alert("Erreur lors de la récupération de la localisation.");
+    } finally {
+      setIsLoading(false); // Arrêter le chargement
+    }
+  };
+
+  const handleEndShift = () => {
+    const endTime = new Date();
+    const duration = Math.round(
+      (endTime.getTime() - (startTime?.getTime() || 0)) / 60000
+    );
+    Alert.alert("Shift terminé", `Durée du shift : ${duration} minutes.`);
+    setShiftStarted(false);
+    setElapsedTime(0); // Réinitialiser le temps écoulé
+  };
+
+  // Formatage du temps écoulé en HH:MM:SS
+  const formatElapsedTime = (seconds: number) => {
+    const hours = String(Math.floor(seconds / 3600)).padStart(2, "0");
+    const minutes = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
+    const secs = String(seconds % 60).padStart(2, "0");
+    return `${hours}:${minutes}:${secs}`;
   };
 
   return (
@@ -108,85 +201,113 @@ export default function RouteInput() {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Text style={styles.title}>Feuille de route</Text>
 
-        <TextInput
-          style={styles.input}
-          value={chauffeur}
-          onChangeText={setChauffeur}
-          placeholder="Chauffeur"
-        />
+        {!shiftStarted && (
+          <>
+            <TextInput
+              style={styles.input}
+              value={chauffeur}
+              onChangeText={setChauffeur}
+              placeholder="Chauffeur"
+            />
 
-        <TextInput
-          style={styles.input}
-          value={dateUtilisation}
-          editable={false}
-        />
-        <TextInput style={styles.input} value={heureDebut} editable={false} />
+            <TextInput
+              style={styles.input}
+              value={dateUtilisation}
+              editable={false}
+            />
+            <TextInput
+              style={styles.input}
+              value={heureDebut}
+              editable={false}
+            />
 
-        <TextInput
-          style={styles.input}
-          value={kmDebut}
-          onChangeText={setKmDebut}
-          placeholder="KM début"
-          keyboardType="numeric"
-        />
+            <TextInput
+              style={styles.input}
+              value={kmDebut}
+              onChangeText={setKmDebut}
+              placeholder="KM début"
+              keyboardType="numeric"
+            />
 
-        <TouchableOpacity
-          style={styles.uploadButton}
-          onPress={handlePhotoUpload}
-        >
-          <Text style={styles.uploadButtonText}>Prendre une photo</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={handlePhotoUpload}
+            >
+              <Text style={styles.uploadButtonText}>Prendre une photo</Text>
+            </TouchableOpacity>
 
-        {isProcessing && (
-          <ActivityIndicator
-            size="large"
-            color="#0000ff"
-            style={{ margin: 10 }}
-          />
+            {isProcessing && (
+              <ActivityIndicator
+                size="large"
+                color="#0000ff"
+                style={{ margin: 10 }}
+              />
+            )}
+
+            {ticketPhoto && (
+              <Image source={{ uri: ticketPhoto }} style={styles.image} />
+            )}
+
+            <TextInput
+              style={styles.input}
+              value={nombrePrises}
+              onChangeText={setNombrePrises}
+              placeholder="Nombre de prises"
+              keyboardType="numeric"
+            />
+
+            <TextInput
+              style={styles.input}
+              value={kmEnCharge}
+              onChangeText={setKmEnCharge}
+              placeholder="KM en charge"
+              keyboardType="numeric"
+            />
+
+            <TextInput
+              style={styles.input}
+              value={chutes}
+              onChangeText={setChutes}
+              placeholder="Chutes"
+              keyboardType="numeric"
+            />
+
+            <TextInput
+              style={styles.input}
+              value={kmTotaux}
+              onChangeText={setKmTotaux}
+              placeholder="KM totaux"
+              keyboardType="numeric"
+            />
+          </>
         )}
 
-        {ticketPhoto && (
-          <Image source={{ uri: ticketPhoto }} style={styles.image} />
+        {!shiftStarted && (
+          <TouchableOpacity
+            style={styles.validateButton}
+            onPress={handleStartShift}
+            disabled={isLoading} // Désactiver le bouton pendant le chargement
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#fff" /> // Afficher l'indicateur de chargement
+            ) : (
+              <Text style={styles.validateText}>Commencer</Text>
+            )}
+          </TouchableOpacity>
         )}
 
-        <TextInput
-          style={styles.input}
-          value={nombrePrises}
-          onChangeText={setNombrePrises}
-          placeholder="Nombre de prises"
-          keyboardType="numeric"
-        />
-
-        <TextInput
-          style={styles.input}
-          value={kmEnCharge}
-          onChangeText={setKmEnCharge}
-          placeholder="KM en charge"
-          keyboardType="numeric"
-        />
-
-        <TextInput
-          style={styles.input}
-          value={chutes}
-          onChangeText={setChutes}
-          placeholder="Chutes"
-          keyboardType="numeric"
-        />
-
-        <TextInput
-          style={styles.input}
-          value={kmTotaux}
-          onChangeText={setKmTotaux}
-          placeholder="KM totaux"
-          keyboardType="numeric"
-        />
-
-        <TouchableOpacity
-          style={styles.validateButton}
-          onPress={handleValidate}
-        >
-          <Text style={styles.validateText}>Valider</Text>
-        </TouchableOpacity>
+        {shiftStarted && (
+          <View style={styles.shiftContainer}>
+            <Text style={styles.shiftText}>Shift en cours...</Text>
+            <Text style={styles.timerText}>
+              {formatElapsedTime(elapsedTime)}
+            </Text>{" "}
+            {/* Afficher le compteur */}
+            <TouchableOpacity style={styles.endButton} onPress={handleEndShift}>
+              <Text style={styles.validateText}>Terminer le Shift</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
       <CustomTabBar activeTab="RouteInput" />
     </View>
@@ -249,5 +370,25 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  shiftContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 20,
+  },
+  shiftText: {
+    fontSize: 20,
+    marginBottom: 10,
+  },
+  timerText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  endButton: {
+    backgroundColor: "#dc3545",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
   },
 });

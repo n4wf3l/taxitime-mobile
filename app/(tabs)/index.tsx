@@ -55,64 +55,66 @@ const LoginScreen = () => {
           source={require("../../assets/images/taxigif.gif")}
           style={styles.backgroundGif}
           resizeMode="cover"
-        />
-
-        <View style={styles.overlay} />
-
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.formWrapper}
         >
-          <ScrollView contentContainerStyle={styles.scrollContainer}>
-            <View style={styles.formContainer}>
-              <Image
-                source={require("../../assets/images/taxitimelogo.png")}
-                style={styles.smallLogo}
-              />
-              <Text style={styles.description}>
-                Bienvenue sur TaxiTime ! Simplifiez votre quotidien de chauffeur
-                en quelques clics.
-              </Text>
+          <View style={styles.overlay} />
 
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor="#888"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="emailAddress"
-              />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.formWrapper}
+          >
+            <ScrollView contentContainerStyle={styles.scrollContainer}>
+              <View style={styles.formContainer}>
+                <Image
+                  source={require("../../assets/images/taxitimelogo.png")}
+                  style={styles.smallLogo}
+                />
+                <Text style={styles.description}>
+                  Bienvenue sur TaxiTime ! Simplifiez votre quotidien de
+                  chauffeur en quelques clics.
+                </Text>
 
-              <TextInput
-                style={styles.input}
-                placeholder="Mot de passe"
-                placeholderTextColor="#888"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-                textContentType="password"
-              />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor="#888"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="emailAddress"
+                />
 
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  !(email && password) && styles.buttonDisabled,
-                ]}
-                onPress={handleLogin}
-                disabled={!(email && password)}
-              >
-                <Text style={styles.buttonText}>Se connecter</Text>
-              </TouchableOpacity>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Mot de passe"
+                  placeholderTextColor="#888"
+                  secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
+                  textContentType="password"
+                />
 
-              <TouchableOpacity>
-                <Text style={styles.forgotPassword}>Mot de passe oublié?</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+                <TouchableOpacity
+                  style={[
+                    styles.button,
+                    !(email && password) && styles.buttonDisabled,
+                  ]}
+                  onPress={handleLogin}
+                  disabled={!(email && password)}
+                >
+                  <Text style={styles.buttonText}>Se connecter</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity>
+                  <Text style={styles.forgotPassword}>
+                    Mot de passe oublié?
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </ImageBackground>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -137,14 +139,14 @@ const styles = StyleSheet.create({
   },
   backgroundGif: {
     position: "absolute",
-    width: width,
-    height: height,
+    width: "100%",
+    height: "100%",
     zIndex: -2,
   },
   overlay: {
     position: "absolute",
-    width: width,
-    height: height,
+    width: "100%",
+    height: "100%",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     zIndex: -1,
   },
