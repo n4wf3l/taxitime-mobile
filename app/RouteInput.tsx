@@ -14,6 +14,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import TesseractOcr from "react-native-tesseract-ocr";
 import CustomTabBar from "../components/CustomTabBar";
+import Icon from "react-native-vector-icons/FontAwesome"; // Importer l'icône
 
 const tessOptions = {
   whitelist: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
@@ -37,11 +38,16 @@ export default function RouteInput() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [shiftStarted, setShiftStarted] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
-  const [isLoading, setIsLoading] = useState(false); // État pour gérer le chargement
-  const [elapsedTime, setElapsedTime] = useState(0); // État pour le temps écoulé
+  const [isLoading, setIsLoading] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
     null
-  ); // État pour l'intervalle du timer
+  );
+
+  // Nouvel état pour les photos des coins du véhicule
+  const [cornerPhotos, setCornerPhotos] = useState<string[]>(
+    Array(4).fill(null)
+  );
 
   useEffect(() => {
     const updateHour = () => {
@@ -57,7 +63,6 @@ export default function RouteInput() {
   }, []);
 
   useEffect(() => {
-    // Démarrer le timer lorsque le shift commence
     if (shiftStarted) {
       setTimerInterval(
         setInterval(() => {
@@ -65,7 +70,6 @@ export default function RouteInput() {
         }, 1000)
       );
     } else {
-      // Arrêter le timer lorsque le shift se termine
       if (timerInterval) {
         clearInterval(timerInterval);
         setTimerInterval(null);
@@ -102,6 +106,31 @@ export default function RouteInput() {
     }
   };
 
+  const handleCornerPhotoUpload = async (index: number) => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (permissionResult.granted === false) {
+      alert("Permission d'accès à la caméra refusée !");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 1,
+      base64: true,
+    });
+
+    if (
+      result &&
+      !result.canceled &&
+      result.assets &&
+      result.assets.length > 0
+    ) {
+      const imageUri = result.assets[0].uri;
+      const updatedPhotos = [...cornerPhotos];
+      updatedPhotos[index] = imageUri; // Mettre à jour l'image pour le coin correspondant
+      setCornerPhotos(updatedPhotos);
+    }
+  };
+
   const extractTextFromImage = async (imageUri: string) => {
     setIsProcessing(true);
     try {
@@ -130,11 +159,11 @@ export default function RouteInput() {
   };
 
   const handleStartShift = async () => {
-    setIsLoading(true); // Démarrer le chargement
+    setIsLoading(true);
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
       alert("Permission de localisation refusée !");
-      setIsLoading(false); // Arrêter le chargement
+      setIsLoading(false);
       return;
     }
 
@@ -144,15 +173,14 @@ export default function RouteInput() {
 
       const { latitude, longitude } = location.coords;
 
-      // Obtenir l'adresse à partir des coordonnées
       const address = await Location.reverseGeocodeAsync({
         latitude,
         longitude,
       });
-      const street = address[0]?.street || "Adresse inconnue"; // Récupérer la rue
-      const city = address[0]?.city || "Ville inconnue"; // Récupérer la ville
-      const postalCode = address[0]?.postalCode || "Code postal inconnu"; // Récupérer le code postal
-      const houseNumber = address[0]?.name || "Numéro inconnu"; // Récupérer le numéro de maison
+      const street = address[0]?.street || "Adresse inconnue";
+      const city = address[0]?.city || "Ville inconnue";
+      const postalCode = address[0]?.postalCode || "Code postal inconnu";
+      const houseNumber = address[0]?.name || "Numéro inconnu";
 
       Alert.alert(
         "Shift commencé",
@@ -174,7 +202,7 @@ export default function RouteInput() {
       );
       alert("Erreur lors de la récupération de la localisation.");
     } finally {
-      setIsLoading(false); // Arrêter le chargement
+      setIsLoading(false);
     }
   };
 
@@ -185,10 +213,9 @@ export default function RouteInput() {
     );
     Alert.alert("Shift terminé", `Durée du shift : ${duration} minutes.`);
     setShiftStarted(false);
-    setElapsedTime(0); // Réinitialiser le temps écoulé
+    setElapsedTime(0);
   };
 
-  // Formatage du temps écoulé en HH:MM:SS
   const formatElapsedTime = (seconds: number) => {
     const hours = String(Math.floor(seconds / 3600)).padStart(2, "0");
     const minutes = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
@@ -279,6 +306,29 @@ export default function RouteInput() {
               placeholder="KM totaux"
               keyboardType="numeric"
             />
+
+            {/* Boutons pour prendre des photos des coins du véhicule */}
+            <Text style={styles.cornerTitle}>Photos des coins du véhicule</Text>
+            {["Avant", "Arrière", "Côté Droit", "Côté Gauche"].map(
+              (label, index) => (
+                <View key={index} style={styles.cornerContainer}>
+                  <TouchableOpacity
+                    style={styles.uploadButton}
+                    onPress={() => handleCornerPhotoUpload(index)}
+                  >
+                    <Icon name="camera" size={20} color="#fff" />
+                    <Text style={styles.uploadButtonText}>{label}</Text>{" "}
+                    {/* Assurez-vous que le texte est dans un composant <Text> */}
+                  </TouchableOpacity>
+                  {cornerPhotos[index] && (
+                    <Image
+                      source={{ uri: cornerPhotos[index] }}
+                      style={styles.image}
+                    />
+                  )}
+                </View>
+              )
+            )}
           </>
         )}
 
@@ -286,10 +336,10 @@ export default function RouteInput() {
           <TouchableOpacity
             style={styles.validateButton}
             onPress={handleStartShift}
-            disabled={isLoading} // Désactiver le bouton pendant le chargement
+            disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color="#fff" /> // Afficher l'indicateur de chargement
+              <ActivityIndicator size="small" color="#fff" />
             ) : (
               <Text style={styles.validateText}>Commencer</Text>
             )}
@@ -301,8 +351,7 @@ export default function RouteInput() {
             <Text style={styles.shiftText}>Shift en cours...</Text>
             <Text style={styles.timerText}>
               {formatElapsedTime(elapsedTime)}
-            </Text>{" "}
-            {/* Afficher le compteur */}
+            </Text>
             <TouchableOpacity style={styles.endButton} onPress={handleEndShift}>
               <Text style={styles.validateText}>Terminer le Shift</Text>
             </TouchableOpacity>
@@ -346,11 +395,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     marginBottom: 15,
+    flexDirection: "row", // Pour aligner l'icône et le texte
+    justifyContent: "center", // Centrer le contenu
   },
   uploadButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+    marginLeft: 10, // Espacement entre l'icône et le texte
   },
   image: {
     width: 100,
@@ -389,6 +441,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#dc3545",
     padding: 15,
     borderRadius: 8,
+    alignItems: "center",
+  },
+  cornerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginVertical: 10,
+    textAlign: "center",
+  },
+  cornerContainer: {
+    marginBottom: 20,
     alignItems: "center",
   },
 });
