@@ -2,8 +2,10 @@ import React from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons"; // Importer les icônes
 import CustomTabBar from "../components/CustomTabBar";
+import { useNavigation } from "@react-navigation/native";
 
 export default function PreviousRoutes() {
+  const navigation = useNavigation();
   const routes = [
     {
       recette: 253,
@@ -55,10 +57,16 @@ export default function PreviousRoutes() {
     },
   ];
 
+  React.useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.title}>🗺️ Historique des shifts</Text>
+        <Text style={[styles.title, { marginTop: 80 }]}>
+          Historique des shifts
+        </Text>
 
         {routes.map((route, index) => (
           <View key={index} style={styles.routeCard}>

@@ -14,7 +14,9 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import TesseractOcr from "react-native-tesseract-ocr";
 import CustomTabBar from "../components/CustomTabBar";
-import Icon from "react-native-vector-icons/FontAwesome"; // Importer l'icône
+import Icon from "react-native-vector-icons/FontAwesome";
+import { createStackNavigator } from "@react-navigation/stack";
+import { useNavigation } from "@react-navigation/native";
 
 const tessOptions = {
   whitelist: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
@@ -26,11 +28,14 @@ export default function RouteInput() {
   const [dateUtilisation, setDateUtilisation] = useState(
     new Date().toLocaleDateString()
   );
+  const navigation = useNavigation();
   const [heureDebut, setHeureDebut] = useState(
     new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   );
+  const Stack = createStackNavigator();
   const [kmDebut, setKmDebut] = useState("");
   const [ticketPhoto, setTicketPhoto] = useState<string | null>(null);
+  const [numeroLicence, setnumeroLicence] = useState("");
   const [nombrePrises, setNombrePrises] = useState("");
   const [kmEnCharge, setKmEnCharge] = useState("");
   const [chutes, setChutes] = useState("");
@@ -81,6 +86,33 @@ export default function RouteInput() {
       }
     };
   }, [shiftStarted]);
+
+  const handlePhotoCapture = async (side: string) => {
+    // Vérifier les permissions d'accès à la caméra
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      alert(
+        "Permission refusée ! Activez l'accès à la caméra dans les paramètres."
+      );
+      return;
+    }
+
+    // Ouvrir l'appareil photo
+    let result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    // Vérifier si l'utilisateur a pris une photo
+    if (!result.canceled) {
+      console.log(`Photo prise pour ${side}:`, result.assets[0].uri);
+      setCornerPhotos((prev) => ({
+        ...prev,
+        [side]: result.assets[0].uri, // Sauvegarder l'image dans l'état
+      }));
+    }
+  };
 
   const handlePhotoUpload = async () => {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
@@ -223,10 +255,14 @@ export default function RouteInput() {
     return `${hours}:${minutes}:${secs}`;
   };
 
+  React.useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.title}>Feuille de route</Text>
+        <Text style={[styles.title, { marginTop: 80 }]}>Feuille de route</Text>
 
         {!shiftStarted && (
           <>
@@ -258,9 +294,10 @@ export default function RouteInput() {
 
             <TouchableOpacity
               style={styles.uploadButton}
-              onPress={handlePhotoUpload}
+              onPress={handlePhotoUpload} // Fonction pour prendre une photo
             >
-              <Text style={styles.uploadButtonText}>Prendre une photo</Text>
+              <Icon name="camera" size={20} color="#fff" />
+              <Text style={styles.uploadButtonText}>Ticket de route</Text>
             </TouchableOpacity>
 
             {isProcessing && (
@@ -274,6 +311,14 @@ export default function RouteInput() {
             {ticketPhoto && (
               <Image source={{ uri: ticketPhoto }} style={styles.image} />
             )}
+
+            <TextInput
+              style={styles.input}
+              value={numeroLicence}
+              onChangeText={setnumeroLicence}
+              placeholder="Numéro de licence"
+              keyboardType="numeric"
+            />
 
             <TextInput
               style={styles.input}
@@ -307,28 +352,57 @@ export default function RouteInput() {
               keyboardType="numeric"
             />
 
-            {/* Boutons pour prendre des photos des coins du véhicule */}
-            <Text style={styles.cornerTitle}>Photos des coins du véhicule</Text>
-            {["Avant", "Arrière", "Côté Droit", "Côté Gauche"].map(
-              (label, index) => (
-                <View key={index} style={styles.cornerContainer}>
-                  <TouchableOpacity
-                    style={styles.uploadButton}
-                    onPress={() => handleCornerPhotoUpload(index)}
-                  >
-                    <Icon name="camera" size={20} color="#fff" />
-                    <Text style={styles.uploadButtonText}>{label}</Text>{" "}
-                    {/* Assurez-vous que le texte est dans un composant <Text> */}
-                  </TouchableOpacity>
-                  {cornerPhotos[index] && (
-                    <Image
-                      source={{ uri: cornerPhotos[index] }}
-                      style={styles.image}
-                    />
-                  )}
-                </View>
-              )
-            )}
+            {/* Photos des coins du véhicule */}
+            <View style={styles.photosContainer}>
+              <Text style={styles.title}>Photos du Véhicule</Text>
+
+              <View style={styles.grid}>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => handlePhotoCapture("avant")}
+                >
+                  <Icon name="car" size={30} color="rgba(231, 185, 33, 0.99)" />
+                  <Text style={styles.buttonText}>Avant</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => handlePhotoCapture("arriere")}
+                >
+                  <Icon name="car" size={30} color="rgba(231, 185, 33, 0.99)" />
+                  <Text style={styles.buttonText}>Arrière</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => handlePhotoCapture("gauche")}
+                >
+                  <Icon
+                    name="arrow-left"
+                    size={30}
+                    color="rgba(231, 185, 33, 0.99)"
+                  />
+                  <Text style={styles.buttonText}>Côté Gauche</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => handlePhotoCapture("droit")}
+                >
+                  <Icon
+                    name="arrow-right"
+                    size={30}
+                    color="rgba(231, 185, 33, 0.99)"
+                  />
+                  <Text style={styles.buttonText}>Côté Droit</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.infoText}>
+                <Icon name="camera" size={14} color="#555" /> Appuyez sur un
+                bouton pour prendre une photo
+              </Text>
+            </View>
           </>
         )}
 
@@ -379,6 +453,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#333",
   },
+  photosContainer: {
+    backgroundColor: "#F8F9FA",
+    padding: 16,
+    borderRadius: 10,
+    marginBottom: 20,
+  },
   input: {
     height: 50,
     borderColor: "#ccc",
@@ -388,6 +468,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     backgroundColor: "#fff",
     fontSize: 16,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  button: {
+    width: "48%",
+    height: 80,
+    backgroundColor: "white",
+    borderWidth: 2,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3, // Effet d'ombre Android
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#555",
+    marginTop: 5,
+  },
+  infoText: {
+    textAlign: "center",
+    fontSize: 12,
+    color: "#555",
+    marginTop: 10,
   },
   uploadButton: {
     backgroundColor: "black",
@@ -412,7 +525,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   validateButton: {
-    backgroundColor: "#28a745",
+    backgroundColor: "black",
     padding: 15,
     borderRadius: 8,
     alignItems: "center",

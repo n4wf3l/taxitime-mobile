@@ -2,12 +2,19 @@ import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { FontAwesome } from "@expo/vector-icons";
+import LogoutButton from "../components/LogoutButton";
 
 type ScreenName = "RouteInput" | "PreviousRoutes" | "Planning";
 
 interface CustomTabBarProps {
   activeTab: ScreenName;
 }
+
+const handleLogout = () => {
+  console.log("Déconnexion réussie !");
+  // Ici tu peux ajouter ton code pour la déconnexion
+  // Exemple : navigation.navigate("Login") ou enlever le token utilisateur
+};
 
 export default function CustomTabBar({ activeTab }: CustomTabBarProps) {
   const navigation = useNavigation();
@@ -54,6 +61,10 @@ export default function CustomTabBar({ activeTab }: CustomTabBarProps) {
           size={30}
           color={activeTab === "Planning" ? "#FFD700" : "#fff"}
         />
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => handlePress("Planning")}>
+        <LogoutButton onLogout={handleLogout} />
       </TouchableOpacity>
     </View>
   );

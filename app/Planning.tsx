@@ -7,8 +7,14 @@ import {
   TouchableOpacity,
   Modal,
   Button,
+  TextInput,
+  Platform,
 } from "react-native";
 import CustomTabBar from "../components/CustomTabBar";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { useNavigation } from "@react-navigation/native";
+import WeeklySchedule from "../components/WeeklySchedule";
+import PlanningDetails from "../components/PlanningDetails";
 
 interface Schedule {
   id: string;
@@ -17,60 +23,97 @@ interface Schedule {
   route: string;
 }
 
-const schedules: Schedule[] = [
-  {
-    id: "1",
-    driver: "John Doe",
-    time: "08:00 AM - 10:00 AM",
-    route: "Route A",
-  },
-  {
-    id: "2",
-    driver: "Jane Smith",
-    time: "10:30 AM - 12:30 PM",
-    route: "Route B",
-  },
-  {
-    id: "3",
-    driver: "Mike Johnson",
-    time: "01:00 PM - 03:00 PM",
-    route: "Route C",
-  },
-  {
-    id: "4",
-    driver: "Emily Davis",
-    time: "03:30 PM - 05:30 PM",
-    route: "Route D",
-  },
-];
+const handleLogout = () => {
+  console.log("Déconnexion réussie !");
+  // Ici tu peux ajouter ton code pour la déconnexion
+  // Exemple : navigation.navigate("Login") ou enlever le token utilisateur
+};
 
-const renderItem = ({ item }: { item: Schedule }) => (
-  <View style={styles.scheduleItem}>
-    <Text style={styles.driverName}>{item.driver}</Text>
-    <Text style={styles.scheduleTime}>{item.time}</Text>
-    <Text style={styles.route}>{item.route}</Text>
-  </View>
-);
+const schedules: Schedule[] = [];
 
 export default function Planning() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState("");
+  const [description, setDescription] = useState("");
+  const navigation = useNavigation();
+  const [startDate, setStartDate] = useState(new Date()); // ✅ Ajout de l'état
+  const [endDate, setEndDate] = useState(new Date()); // ✅ Ajout de l'état
+
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const handleStartDateChange = (event: any, selectedDate?: Date) => {
+    if (selectedDate) {
+      setStartDate(selectedDate); // ✅ Utilisation correcte
+    }
+    setShowStartPicker(false);
+  };
+
+  const handleEndDateChange = (event: any, selectedDate?: Date) => {
+    if (selectedDate) {
+      if (selectedDate < startDate) {
+        alert("La date de fin ne peut pas être avant la date de début !");
+      } else {
+        setEndDate(selectedDate); // ✅ Utilisation correcte
+      }
+    }
+    setShowEndPicker(false);
+  };
 
   const openModal = (type: string) => {
     setModalType(type);
     setModalVisible(true);
   };
 
+  const handleSubmit = () => {
+    if (!description.trim()) {
+      alert("Veuillez ajouter une description.");
+      return;
+    }
+
+    console.log("Demande envoyée :", {
+      type: modalType,
+      description,
+    });
+
+    // Ici, tu peux ajouter l'envoi vers un backend ou une API
+
+    alert("Demande envoyée avec succès !");
+    setModalVisible(false); // Ferme la modal après l'envoi
+  };
+
+  React.useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
   return (
     <View style={styles.container}>
+      <View style={{ flex: 1 }}>
+        {/* Ton contenu principal */}
+        <Text style={styles.title}>Feuille de route</Text>
+        {/* ... le reste du code */}
+      </View>
       <FlatList
         data={schedules}
         keyExtractor={(item) => item.id}
-        renderItem={renderItem}
+        renderItem={({ item }) => (
+          <View style={styles.scheduleItem}>
+            <Text style={styles.driverName}>{item.driver}</Text>
+            <Text style={styles.scheduleTime}>{item.time}</Text>
+            <Text style={styles.route}>{item.route}</Text>
+          </View>
+        )}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Planning</Text>
-            <Text style={styles.subtitle}>Upcoming Driver Schedules</Text>
+            <Text style={[styles.title, { marginTop: 80 }]}>Planning</Text>
 
             <View style={styles.buttonContainer}>
               <TouchableOpacity
@@ -86,19 +129,8 @@ export default function Planning() {
                 <Text style={styles.buttonText}>Demande de travail</Text>
               </TouchableOpacity>
             </View>
-
-            <View style={styles.calendarContainer}>
-              <Text style={styles.calendarTitle}>Calendrier</Text>
-              <View style={styles.weekContainer}>
-                {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map(
-                  (day) => (
-                    <View key={day} style={styles.dayContainer}>
-                      <Text style={styles.dayText}>{day}</Text>
-                    </View>
-                  )
-                )}
-              </View>
-            </View>
+            <WeeklySchedule />
+            <PlanningDetails currentDay={""} />
           </View>
         }
         contentContainerStyle={styles.listContainer}
@@ -106,6 +138,7 @@ export default function Planning() {
 
       <CustomTabBar activeTab="Planning" />
 
+      {/* Modal de demande */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -119,15 +152,66 @@ export default function Planning() {
                 ? "Demande de Congé"
                 : "Demande de Travail"}
             </Text>
+
             <Text style={styles.modalText}>
               {modalType === "congé"
                 ? "Formulaire de demande de congé."
                 : "Formulaire de demande de travail."}
             </Text>
-            <Button title="Fermer" onPress={() => setModalVisible(false)} />
+
+            {/* Sélection de la plage de dates */}
+            <Text style={styles.label}>Du :</Text>
+            <TouchableOpacity
+              style={styles.input}
+              onPress={() => setShowStartPicker(true)}
+            >
+              <Text>{formatDate(startDate)}</Text>
+            </TouchableOpacity>
+
+            {showStartPicker && (
+              <DateTimePicker
+                value={startDate}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={handleStartDateChange}
+              />
+            )}
+
+            <Text style={styles.label}>Au :</Text>
+            <TouchableOpacity
+              style={styles.input}
+              onPress={() => setShowEndPicker(true)}
+            >
+              <Text>{formatDate(endDate)}</Text>
+            </TouchableOpacity>
+
+            {showEndPicker && (
+              <DateTimePicker
+                value={endDate}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={handleEndDateChange}
+              />
+            )}
+
+            {/* Champ pour la description */}
+            <Text style={styles.label}>Description :</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Ajoutez une description..."
+              value={description}
+              onChangeText={setDescription}
+              multiline
+            />
+
+            <View style={styles.buttonRow}>
+              <Button title="Fermer" onPress={() => setModalVisible(false)} />
+              <Button title="Envoyer" onPress={handleSubmit} color="#007BFF" />
+            </View>
           </View>
         </View>
       </Modal>
+      <View style={{ flex: 1 }}></View>
     </View>
   );
 }
@@ -137,11 +221,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f9f9f9",
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 10,
+  scrollContainer: {
     padding: 20,
+    paddingBottom: 80,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+    color: "#333",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 15,
+    width: "100%",
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 5,
+    padding: 10,
+    width: "100%",
+    backgroundColor: "#fff",
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: "top",
   },
   subtitle: {
     fontSize: 16,
