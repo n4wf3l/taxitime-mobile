@@ -41,6 +41,7 @@ export default function Planning() {
 
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
+  const [selectedDay, setSelectedDay] = useState("Lun");
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("fr-FR", {
@@ -130,7 +131,8 @@ export default function Planning() {
               </TouchableOpacity>
             </View>
             <WeeklySchedule />
-            <PlanningDetails currentDay={""} />
+            <View style={styles.separator} />
+            <PlanningDetails currentDay={selectedDay} />
           </View>
         }
         contentContainerStyle={styles.listContainer}
@@ -237,6 +239,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#333",
   },
+  separator: {
+    height: 1, // ✅ Épaisseur de la ligne
+    backgroundColor: "#ccc", // ✅ Gris clair
+    marginVertical: 15, // ✅ Espacement avant et après
+    width: "90%", // ✅ Largeur réduite pour un look épuré
+    alignSelf: "center", // ✅ Centre la ligne
+    marginTop: 60,
+  },
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -274,7 +284,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   button: {
-    backgroundColor: "#007BFF",
+    backgroundColor: "black",
     padding: 10,
     borderRadius: 5,
     flex: 1,

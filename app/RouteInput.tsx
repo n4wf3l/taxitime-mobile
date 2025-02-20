@@ -354,7 +354,7 @@ export default function RouteInput() {
 
             {/* Photos des coins du véhicule */}
             <View style={styles.photosContainer}>
-              <Text style={styles.title}>Photos du Véhicule</Text>
+              <Text style={styles.title}>Photos du véhicule</Text>
 
               <View style={styles.grid}>
                 <TouchableOpacity

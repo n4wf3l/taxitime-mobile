@@ -42,17 +42,17 @@ const PlanningDetails = ({ currentDay }: { currentDay: string }) => {
       </View>
 
       <View style={styles.infoContainer}>
-        <Text style={styles.label}>Chauffeur Actuel :</Text>
+        <Text style={styles.label}>Chauffeur actuel :</Text>
         <Text style={styles.value}>{currentDriver.driver}</Text>
       </View>
 
       <View style={styles.infoContainer}>
-        <Text style={styles.label}>Chauffeur Précédent :</Text>
+        <Text style={styles.label}>Chauffeur précédent :</Text>
         <Text style={styles.value}>{prevDriver.driver}</Text>
       </View>
 
       <View style={styles.infoContainer}>
-        <Text style={styles.label}>Chauffeur Suivant :</Text>
+        <Text style={styles.label}>Chauffeur suivant :</Text>
         <Text style={styles.value}>{nextDriver.driver}</Text>
       </View>
 
@@ -60,7 +60,9 @@ const PlanningDetails = ({ currentDay }: { currentDay: string }) => {
         style={styles.whatsappButton}
         onPress={contactNextDriver}
       >
-        <FontAwesome name="whatsapp" size={24} color="white" />
+        <View style={styles.whatsappIconContainer}>
+          <FontAwesome name="whatsapp" size={24} color="white" />
+        </View>
         <Text style={styles.whatsappText}>Contacter {nextDriver.driver}</Text>
       </TouchableOpacity>
     </View>
@@ -71,13 +73,6 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 20,
     padding: 20,
-    backgroundColor: "#FFF",
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   title: {
     fontSize: 20,
@@ -102,11 +97,21 @@ const styles = StyleSheet.create({
   whatsappButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#25D366",
+    backgroundColor: "black", // Fond du bouton noir
     padding: 12,
     borderRadius: 5,
     marginTop: 10,
     justifyContent: "center",
+  },
+  /* ✅ Cercle vert autour du logo WhatsApp */
+  whatsappIconContainer: {
+    width: 32, // Taille fixe pour un rond parfait
+    height: 32,
+    borderRadius: 16, // Rend le fond circulaire
+    backgroundColor: "#25D366", // Vert WhatsApp
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10, // Espacement entre l'icône et le texte
   },
   whatsappText: {
     color: "white",

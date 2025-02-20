@@ -76,6 +76,22 @@ const WeeklySchedule = () => {
           </View>
         ))}
       </View>
+
+      {/* ✅ Légende des couleurs des shifts */}
+      <View style={styles.legendContainer}>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendBox, { backgroundColor: "#FFB300" }]} />
+          <Text style={styles.legendText}>Matin</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendBox, { backgroundColor: "#673AB7" }]} />
+          <Text style={styles.legendText}>Nuit</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendBox, { backgroundColor: "#B0BEC5" }]} />
+          <Text style={styles.legendText}>Repos</Text>
+        </View>
+      </View>
     </View>
   );
 };
@@ -139,6 +155,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     textAlign: "center",
+  },
+  /* ✅ Styles pour la légende */
+  legendContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 10,
+  },
+  legendBox: {
+    width: 16,
+    height: 16,
+    borderRadius: 3,
+    marginRight: 5,
+  },
+  legendText: {
+    fontSize: 14,
+    color: "#333",
   },
 });
 
