@@ -426,12 +426,73 @@ export default function RouteInput() {
             <Text style={styles.timerText}>
               {formatElapsedTime(elapsedTime)}
             </Text>
+
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={handlePhotoUpload} // Fonction pour prendre une photo
+            >
+              <Icon name="camera" size={20} color="#fff" />
+              <Text style={styles.uploadButtonText}>Ticket de route</Text>
+            </TouchableOpacity>
+
+            {isProcessing && (
+              <ActivityIndicator
+                size="large"
+                color="#0000ff"
+                style={{ margin: 10 }}
+              />
+            )}
+
+            {ticketPhoto && (
+              <Image source={{ uri: ticketPhoto }} style={styles.image} />
+            )}
+
+            <TextInput
+              style={styles.input}
+              value={numeroLicence}
+              onChangeText={setnumeroLicence}
+              placeholder="Numéro de licence"
+              keyboardType="numeric"
+            />
+
+            <TextInput
+              style={styles.input}
+              value={nombrePrises}
+              onChangeText={setNombrePrises}
+              placeholder="Nombre de prises"
+              keyboardType="numeric"
+            />
+
+            <TextInput
+              style={styles.input}
+              value={kmEnCharge}
+              onChangeText={setKmEnCharge}
+              placeholder="KM en charge"
+              keyboardType="numeric"
+            />
+
+            <TextInput
+              style={styles.input}
+              value={chutes}
+              onChangeText={setChutes}
+              placeholder="Chutes"
+              keyboardType="numeric"
+            />
+
+            <TextInput
+              style={styles.input}
+              value={kmTotaux}
+              onChangeText={setKmTotaux}
+              placeholder="KM totaux"
+              keyboardType="numeric"
+            />
             <TouchableOpacity style={styles.endButton} onPress={handleEndShift}>
               <Text style={styles.validateText}>Terminer le Shift</Text>
             </TouchableOpacity>
           </View>
         )}
       </ScrollView>
+
       <CustomTabBar activeTab="RouteInput" />
     </View>
   );
