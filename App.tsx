@@ -5,6 +5,7 @@ import RouteInput from "./app/RouteInput";
 import PreviousRoutes from "./app/PreviousRoutes";
 import Planning from "./app/Planning";
 import Index from "./app/(tabs)/index"; // Page de connexion
+import RouteOutput from "./app/RouteOutput";
 
 const Stack = createNativeStackNavigator();
 
@@ -17,6 +18,7 @@ export default function App() {
       >
         <Stack.Screen name="Login" component={Index} />
         <Stack.Screen name="RouteInput" component={RouteInput} />
+        <Stack.Screen name="RouteOutput" component={RouteOutput} />
         <Stack.Screen name="PreviousRoutes" component={PreviousRoutes} />
         <Stack.Screen name="Planning" component={Planning} />
       </Stack.Navigator>
