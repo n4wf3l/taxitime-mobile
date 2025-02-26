@@ -194,6 +194,10 @@ export default function RouteInput() {
     setIsLoading(false); // Arrêtez le chargement après la navigation
   };
 
+  React.useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>

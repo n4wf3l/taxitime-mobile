@@ -159,6 +159,10 @@ export default function RouteOutput() {
     return `${hours}:${minutes}:${secs}`;
   };
 
+  React.useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
