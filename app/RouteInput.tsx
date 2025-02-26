@@ -16,14 +16,11 @@ import CustomTabBar from "../components/CustomTabBar";
 import Icon from "react-native-vector-icons/FontAwesome";
 import { createStackNavigator } from "@react-navigation/stack";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const tessOptions = {
-  whitelist: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
-  blacklist: "!@#$%^&*()_+={}[]|;:'\"<>,.?/~`",
-};
 
 export default function RouteInput() {
-  const [chauffeur, setChauffeur] = useState("Chauffeur");
+  const [chauffeur, setChauffeur] = useState("");
   const [dateUtilisation, setDateUtilisation] = useState(
     new Date().toLocaleDateString()
   );
@@ -53,11 +50,71 @@ export default function RouteInput() {
     gauche: null,
     droit: null,
   });
+  const [chauffeurId, setChauffeurId] = useState<string | null>(null);
 
   // Nouvel état pour les photos des coins du véhicule
   const [cornerPhotos, setCornerPhotos] = useState<string[]>(
     Array(4).fill(null)
   );
+
+
+  useEffect(() => {
+    // Retrieve chauffeur ID from AsyncStorage
+    const getChauffeurId = async () => {
+      const id = await AsyncStorage.getItem("chauffeurId");
+      if (!id) {
+        Alert.alert("Erreur", "Chauffeur non connecté.");
+        return;
+      }
+      setChauffeurId(id);
+      console.log("🚖 Chauffeur ID:", id);
+    };
+
+    getChauffeurId();
+  }, []);
+
+
+  useEffect(() => {
+    const fetchUserFullNameById = async () => {
+      try {
+        const chauffeurID = await AsyncStorage.getItem("chauffeurId");
+        const token = await AsyncStorage.getItem("token"); // Get JWT Token
+  
+        if (!chauffeurID || !token) {
+          console.warn("🚨 Missing chauffeur ID or token.");
+          return;
+        }
+  
+        const response = await fetch(`http://192.168.68.100:3000/chauffeurs/auth/${chauffeurID}`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`, // ✅ Add Authorization header
+            "Content-Type": "application/json",
+          },
+        });
+  
+        if (!response.ok) {
+          console.log(chauffeurID)
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+  
+        const chauffeurData = await response.json();
+        if (chauffeurData && chauffeurData.first_name && chauffeurData.last_name) {
+          setChauffeur(`${chauffeurData.first_name} ${chauffeurData.last_name}`);
+          console.log(`✅ Chauffeur Name: ${chauffeurData.first_name} ${chauffeurData.last_name}`);
+        } else {
+          console.warn("⚠️ No chauffeur name found:", chauffeurData);
+        }
+       console.log(chauffeurData)
+      } catch (error) {
+        console.error("❌ Error fetching chauffeur name:", error);
+      }
+    };
+  
+    fetchUserFullNameById();
+  }, []);
+  
 
   useEffect(() => {
     const updateHour = () => {

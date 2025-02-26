@@ -14,9 +14,13 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
   Keyboard,
+  Alert
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width, height } = Dimensions.get("window");
+
+const API_URL = "http://192.168.68.100:3000/auth/login"; // Backend API
 
 const LoginScreen = () => {
   const [email, setEmail] = useState("");
@@ -31,9 +35,32 @@ const LoginScreen = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleLogin = () => {
-    if (email && password) {
-      router.push("/RouteInput"); // ✅ Redirection vers RouteInput
+  const handleLogin = async () => {
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
+      }
+
+      console.log("✅ Login Successful:", data);
+
+      // Store token & userId in AsyncStorage
+      await AsyncStorage.setItem("token", data.accessToken);
+      const decodedToken = JSON.parse(atob(data.accessToken.split(".")[1])); // Decode JWT
+      await AsyncStorage.setItem("chauffeurId", decodedToken.sub); // Store user ID
+
+      // Redirect to RouteInput after successful login
+      router.push("/RouteInput");
+    } catch (error) {
+      console.error("❌ Login Error:", error);
+      Alert.alert("Login Failed");
     }
   };
 
