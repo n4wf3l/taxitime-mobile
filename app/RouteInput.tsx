@@ -299,6 +299,10 @@ export default function RouteInput() {
           placeholderTextColor="#D1D5DB"
         />
 
+        {/* Ligne de séparation */}
+        <View style={styles.separator} />
+
+        <Text style={styles.sectionTitle}>Photos du véhicule (4)</Text>
         {/* Photos des coins du véhicule */}
         <View style={styles.photoContainer}>
           {Object.entries(photos).map(([side, uri]) => (
@@ -445,5 +449,29 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  separator: {
+    height: 2,
+    backgroundColor: "rgba(231, 185, 33, 0.99)",
+    marginVertical: 15,
+    width: "80%",
+    alignSelf: "center",
+    borderRadius: 5,
+  },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 15,
+    width: "100%",
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    textAlign: "center",
+    alignSelf: "center",
+    marginVertical: 10,
+    marginBottom: 30,
   },
 });
