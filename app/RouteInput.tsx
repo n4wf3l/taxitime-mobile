@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
-import TesseractOcr from "react-native-tesseract-ocr";
 import CustomTabBar from "../components/CustomTabBar";
 import Icon from "react-native-vector-icons/FontAwesome";
 import { createStackNavigator } from "@react-navigation/stack";
@@ -35,7 +34,7 @@ export default function RouteInput() {
   const Stack = createStackNavigator();
   const [kmDebut, setKmDebut] = useState("");
   const [ticketPhoto, setTicketPhoto] = useState<string | null>(null);
-  const [numeroLicence, setnumeroLicence] = useState("");
+  const [numeroLicence, setNumeroLicence] = useState("");
   const [nombrePrises, setNombrePrises] = useState("");
   const [kmEnCharge, setKmEnCharge] = useState("");
   const [chutes, setChutes] = useState("");
@@ -48,6 +47,12 @@ export default function RouteInput() {
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
     null
   );
+  const [photos, setPhotos] = useState({
+    avant: null,
+    arriere: null,
+    gauche: null,
+    droit: null,
+  });
 
   // Nouvel état pour les photos des coins du véhicule
   const [cornerPhotos, setCornerPhotos] = useState<string[]>(
@@ -88,33 +93,128 @@ export default function RouteInput() {
   }, [shiftStarted]);
 
   const handlePhotoCapture = async (side: string) => {
-    // Vérifier les permissions d'accès à la caméra
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      alert(
-        "Permission refusée ! Activez l'accès à la caméra dans les paramètres."
-      );
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert("Permission refusée", "Activez l'accès à la caméra dans les paramètres.");
       return;
     }
 
-    // Ouvrir l'appareil photo
     let result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
-      aspect: [4, 3],
       quality: 1,
     });
 
-    // Vérifier si l'utilisateur a pris une photo
-    if (!result.canceled) {
-      console.log(`Photo prise pour ${side}:`, result.assets[0].uri);
-      setCornerPhotos((prev) => ({
-        ...prev,
-        [side]: result.assets[0].uri, // Sauvegarder l'image dans l'état
+    if (!result.canceled && result.assets.length > 0) {
+      const imageUri = result.assets[0].uri;
+      console.log(`📸 Photo prise pour ${side}:`, imageUri);
+      setPhotos((prevPhotos) => ({
+        ...prevPhotos,
+        [side]: imageUri,
       }));
     }
   };
 
   const handlePhotoUpload = async () => {
+    console.log("Requesting camera permissions...");
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (permissionResult.granted === false) {
+      alert("Permission d'accès à la caméra refusée !");
+      return;
+    }
+  
+    console.log("Opening camera...");
+    const result = await ImagePicker.launchCameraAsync({ quality: 1, base64: false });
+  
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const imageUri = result.assets[0].uri;
+      console.log("Photo taken, URI:", imageUri);
+  
+      if (!imageUri) {
+        alert("Erreur: L'URI de l'image est invalide.");
+        return;
+      }
+  
+      setTicketPhoto(imageUri);
+      await uploadImage(imageUri);
+    } else {
+      console.log("Photo capture was canceled.");
+    }
+  };
+  
+
+  const uploadImage = async (uri: string) => {
+    if (!uri) {
+      console.error("❌ Invalid URI received, stopping upload.");
+      alert("Erreur: URI de l'image non valide.");
+      return;
+    }
+  
+    console.log("📤 Uploading image to backend:", uri);
+    setIsProcessing(true);
+  
+    let formData = new FormData();
+  
+    try {
+      // Convert the image file to a Blob
+      console.log("🔄 Fetching image as blob...");
+      const response = await fetch(uri);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      console.log("✅ Image successfully converted to blob.");
+  
+      // Append the file to FormData
+      formData.append("file", {
+        uri, // ✅ Keep original URI for React Native compatibility
+        name: "ticket.jpg",
+        type: "image/jpeg",
+      } as any); // ✅ Workaround to fix TypeScript issue
+  
+      console.log("🚀 Sending image to backend...");
+  
+      let serverResponse = await fetch("http://192.168.68.100:3000/ocr/process", {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Accept": "application/json", // ✅ Do NOT set "Content-Type"
+        },
+      });
+  
+      if (!serverResponse.ok) {
+        throw new Error(`❌ Server Error: ${serverResponse.status}`);
+      }
+  
+      let data;
+      try {
+        data = await serverResponse.json();
+      } catch (jsonError) {
+        throw new Error("❌ Invalid JSON response from server");
+      }
+  
+      console.log("✅ Received OCR data:", data);
+      setNumeroLicence(data.noLicence || "");
+      setNombrePrises(data.courses || "");
+      setKmEnCharge(data.distCharge || "");
+      setKmTotaux(data.distTotale || "");
+      setChutes(data.nbreChutes || "");
+  
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "❌ Une erreur inconnue s'est produite.";
+      console.error("🚨 Upload Error:", error);
+      Alert.alert("Erreur", `Échec du traitement de l'image : ${errorMessage}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  
+  
+  
+  
+  
+  
+  const handlePhotoUploadbis = async () => {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
     if (permissionResult.granted === false) {
       alert("Permission d'accès à la caméra refusée !");
@@ -126,16 +226,7 @@ export default function RouteInput() {
       base64: true,
     });
 
-    if (
-      result &&
-      !result.canceled &&
-      result.assets &&
-      result.assets.length > 0
-    ) {
-      const imageUri = result.assets[0].uri;
-      setTicketPhoto(imageUri);
-      await extractTextFromImage(imageUri);
-    }
+    
   };
 
   const handleCornerPhotoUpload = async (index: number) => {
@@ -163,32 +254,7 @@ export default function RouteInput() {
     }
   };
 
-  const extractTextFromImage = async (imageUri: string) => {
-    setIsProcessing(true);
-    try {
-      const text = await TesseractOcr.recognize(imageUri, "eng", tessOptions);
-      console.log("Texte extrait :", text);
-
-      const prisesMatch = text.match(/Prises\s*[:\-]?\s*(\d+)/i);
-      const kmEnChargeMatch = text.match(/KM\s*en\s*charge\s*[:\-]?\s*(\d+)/i);
-      const chutesMatch = text.match(/Chutes\s*[:\-]?\s*(\d+)/i);
-      const kmTotauxMatch = text.match(/KM\s*totaux\s*[:\-]?\s*(\d+)/i);
-
-      if (prisesMatch) setNombrePrises(prisesMatch[1]);
-      if (kmEnChargeMatch) setKmEnCharge(kmEnChargeMatch[1]);
-      if (chutesMatch) setChutes(chutesMatch[1]);
-      if (kmTotauxMatch) setKmTotaux(kmTotauxMatch[1]);
-
-      if (!prisesMatch && !kmEnChargeMatch && !chutesMatch && !kmTotauxMatch) {
-        alert("Impossible d'extraire les données attendues.");
-      }
-    } catch (err) {
-      console.error("Erreur OCR:", err);
-      alert("Erreur lors de la reconnaissance du texte.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+ 
 
   const handleStartShift = async () => {
     setIsLoading(true);
@@ -285,12 +351,12 @@ export default function RouteInput() {
             />
 
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: "black" }]} 
               value={kmDebut}
               onChangeText={setKmDebut}
               placeholder="KM début"
               keyboardType="numeric"
-            />
+              placeholderTextColor="#D1D5DB" />
 
             <TouchableOpacity
               style={styles.uploadButton}
@@ -300,24 +366,24 @@ export default function RouteInput() {
               <Text style={styles.uploadButtonText}>Ticket de route</Text>
             </TouchableOpacity>
 
-            {isProcessing && (
-              <ActivityIndicator
-                size="large"
-                color="#0000ff"
-                style={{ margin: 10 }}
-              />
-            )}
+              {isProcessing && (
+                <ActivityIndicator
+                  size="large"
+                  color="#0000ff"
+                  style={{ margin: 10 }}
+                />
+              )}
 
-            {ticketPhoto && (
-              <Image source={{ uri: ticketPhoto }} style={styles.image} />
-            )}
+            
+            {ticketPhoto && <Image source={{ uri: ticketPhoto }} style={{ marginLeft:100, width: 200, height: 200, marginVertical: 10 }} />}
 
             <TextInput
               style={styles.input}
               value={numeroLicence}
-              onChangeText={setnumeroLicence}
+              onChangeText={setNumeroLicence}
               placeholder="Numéro de licence"
               keyboardType="numeric"
+              placeholderTextColor="#D1D5DB"
             />
 
             <TextInput
@@ -326,6 +392,7 @@ export default function RouteInput() {
               onChangeText={setNombrePrises}
               placeholder="Nombre de prises"
               keyboardType="numeric"
+              placeholderTextColor="#D1D5DB"
             />
 
             <TextInput
@@ -334,6 +401,7 @@ export default function RouteInput() {
               onChangeText={setKmEnCharge}
               placeholder="KM en charge"
               keyboardType="numeric"
+              placeholderTextColor="#D1D5DB"
             />
 
             <TextInput
@@ -342,6 +410,7 @@ export default function RouteInput() {
               onChangeText={setChutes}
               placeholder="Chutes"
               keyboardType="numeric"
+              placeholderTextColor="#D1D5DB"
             />
 
             <TextInput
@@ -350,58 +419,36 @@ export default function RouteInput() {
               onChangeText={setKmTotaux}
               placeholder="KM totaux"
               keyboardType="numeric"
+              placeholderTextColor="#D1D5DB"
             />
 
+        
             {/* Photos des coins du véhicule */}
-            <View style={styles.photosContainer}>
-              <Text style={styles.title}>Photos du véhicule</Text>
+            <View style={{ flex: 1, padding: 20 }}>
+              <ScrollView contentContainerStyle={{ alignItems: "center" }}>
+                <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>Feuille de route</Text>
 
-              <View style={styles.grid}>
-                <TouchableOpacity
-                  style={styles.button}
-                  onPress={() => handlePhotoCapture("avant")}
-                >
-                  <Icon name="car" size={30} color="rgba(231, 185, 33, 0.99)" />
-                  <Text style={styles.buttonText}>Avant</Text>
-                </TouchableOpacity>
+                <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 10 }}>Photos du véhicule</Text>
 
-                <TouchableOpacity
-                  style={styles.button}
-                  onPress={() => handlePhotoCapture("arriere")}
-                >
-                  <Icon name="car" size={30} color="rgba(231, 185, 33, 0.99)" />
-                  <Text style={styles.buttonText}>Arrière</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center" }}>
+                  {Object.entries(photos).map(([side, uri]) => (
+                    <TouchableOpacity key={side} style={styles.photoButton} onPress={() => handlePhotoCapture(side)}>
+                      {uri ? (
+                        <Image source={{ uri }} style={styles.photo} />
+                      ) : (
+                        <>
+                          <Icon name={side === "gauche" ? "arrow-left" : side === "droit" ? "arrow-right" : "car"} size={30} color="rgba(231, 185, 33, 0.99)" />
+                          <Text style={styles.buttonText}>{side === "avant" ? "Avant" : side === "arriere" ? "Arrière" : side === "gauche" ? "Côté Gauche" : "Côté Droit"}</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
-                <TouchableOpacity
-                  style={styles.button}
-                  onPress={() => handlePhotoCapture("gauche")}
-                >
-                  <Icon
-                    name="arrow-left"
-                    size={30}
-                    color="rgba(231, 185, 33, 0.99)"
-                  />
-                  <Text style={styles.buttonText}>Côté Gauche</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.button}
-                  onPress={() => handlePhotoCapture("droit")}
-                >
-                  <Icon
-                    name="arrow-right"
-                    size={30}
-                    color="rgba(231, 185, 33, 0.99)"
-                  />
-                  <Text style={styles.buttonText}>Côté Droit</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.infoText}>
-                <Icon name="camera" size={14} color="#555" /> Appuyez sur un
-                bouton pour prendre une photo
-              </Text>
+                <Text style={styles.infoText}>
+                  <Icon name="camera" size={14} color="#555" /> Appuyez sur un bouton pour prendre une photo
+                </Text>
+              </ScrollView>
             </View>
           </>
         )}
@@ -450,7 +497,7 @@ export default function RouteInput() {
             <TextInput
               style={styles.input}
               value={numeroLicence}
-              onChangeText={setnumeroLicence}
+              onChangeText={setNumeroLicence}
               placeholder="Numéro de licence"
               keyboardType="numeric"
             />
@@ -503,6 +550,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f9f9f9",
   },
+  photoButton: {
+    width: 140,
+    height: 140,
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: 5,
+  },
+  buttonText: { fontSize: 14, fontWeight: "bold", color: "#555", marginTop: 5 },
+  photo: { width: "100%", height: "100%", borderRadius: 10 },
+  infoText: { fontSize: 12, color: "#777", marginTop: 10 },
+
   scrollContainer: {
     padding: 20,
     paddingBottom: 80,
@@ -530,6 +592,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     fontSize: 16,
   },
+  
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -551,18 +614,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3, // Effet d'ombre Android
   },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#555",
-    marginTop: 5,
-  },
-  infoText: {
-    textAlign: "center",
-    fontSize: 12,
-    color: "#555",
-    marginTop: 10,
-  },
+
   uploadButton: {
     backgroundColor: "black",
     padding: 15,
