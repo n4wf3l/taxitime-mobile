@@ -14,19 +14,21 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
   Keyboard,
-  Alert
+  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Eye, EyeOff } from "lucide-react-native";
 
 const { width, height } = Dimensions.get("window");
 
-const API_URL = "http://192.168.68.100:3000/auth/login"; // Backend API
+const API_URL = "http://192.168.0.14:3000/auth/login"; // Backend API
 
 const LoginScreen = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showSplash, setShowSplash] = useState(true);
   const router = useRouter(); // Utilisation du router
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -100,6 +102,7 @@ const LoginScreen = () => {
                   chauffeur en quelques clics.
                 </Text>
 
+                {/* Input Email */}
                 <TextInput
                   style={styles.input}
                   placeholder="Email"
@@ -112,16 +115,29 @@ const LoginScreen = () => {
                   textContentType="emailAddress"
                 />
 
-                <TextInput
-                  style={styles.input}
-                  placeholder="Mot de passe"
-                  placeholderTextColor="#888"
-                  secureTextEntry
-                  value={password}
-                  onChangeText={setPassword}
-                  textContentType="password"
-                />
+                {/* Input Mot de Passe avec Icône Eye */}
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="Mot de passe"
+                    placeholderTextColor="#888"
+                    secureTextEntry={!showPassword} // Dynamique selon l'état
+                    value={password}
+                    onChangeText={setPassword}
+                    textContentType="password"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={24} color="#888" /> // Icône Eye barrée
+                    ) : (
+                      <Eye size={24} color="#888" /> // Icône Eye normale
+                    )}
+                  </TouchableOpacity>
+                </View>
 
+                {/* Bouton de connexion */}
                 <TouchableOpacity
                   style={[
                     styles.button,
@@ -169,6 +185,21 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     zIndex: -2,
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 5,
+    marginVertical: 10,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 10,
+    color: "white",
   },
   overlay: {
     position: "absolute",
